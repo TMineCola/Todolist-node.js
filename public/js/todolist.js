@@ -2,18 +2,6 @@ var App = (function(){
 
     var todos = null;
 
-    /* Firebase Database Rule Read/Write must be true */
-
-    // Initialize Firebase
-    var config = {
-        apiKey: "...",
-        authDomain: "...",
-        databaseURL: "...",
-        projectId: "...",
-        storageBucket: "...",
-        messagingSenderId: "..."
-    };
-
     /* 綁定事件 */
     function _bindEvent() {
         console.log("Event binding now...");
@@ -27,60 +15,90 @@ var App = (function(){
     /* 新增TODO */
     function _handleAddEvent() {
         let content = $('#inputContent').val();
-        let title = '快速便籤';
-        todos.push({
-            'title': title,
-            'time': Date(),
-            'content': content
-        });
-        $('#inputContent').val('');
-    }
-
-    /* 刪除TODO */
-    function _handleDeleteEvent() {
-        let key = $(this).parents('.card-block').attr('data-key');
-        todos.child(key).remove();
-    }
-
-    /* TODOs 渲染 */
-    function _renderTodo() {
-        console.log("Rendering...");
         let list = $('#todolist');
-        todos.on('value', function(snapshot){
+        let title = '快速便籤';
+        $.ajax({
+            method: "POST",
+            url: "/add",
+            data: {
+                'title': title,
+                'time': Date(),
+                'content': content
+            }
+        })
+        .done(function( data ) {
+            // 新增成功, 重新render頁面
             list.html('');
             $('.loading').css('display', 'block');
             $('.container-fluid').css('display', 'none');
-            let data = snapshot.val();
-            for(let key in data) {
+            for(let key in data.result) {
                 list.append(`
                 <div class="card m-2">
                     <div class="card-block p-2" data-key="${key}">
                         <div class="d-flex mb-2 justify-content-between">
-                            <span class="h4 mb-0 card-title">${data[key].title} <small class="h6 text-muted">${data[key].time}</small></span>
+                            <span class="h4 mb-0 card-title">${data.result[key].title} <small class="h6 text-muted">${data.result[key].time}</small></span>
                             <i class="delete-icon mt-1 mr-1 justify-content-end fas fa-times"></i>
                         </div>
-                        <p class="card-text">${data[key].content}</p>
+                        <p class="card-text">${data.result[key].content}</p>
                     </div>
                 </div>
                 `);
             }
             $('.loading').css('display', 'none');
             $('.container-fluid').css('display', 'block');
-        });
-        console.log("Render sucessful!");
+            console.log("Added and successful render");
+        })
+        .fail(function( data ){
+            // 新增失敗, 跳訊息
+            alert("Failed!");
+        }
+        );
+        $('#inputContent').val('');
+    }
+
+    /* 刪除TODO */
+    function _handleDeleteEvent() {
+        let key = $(this).parents('.card-block').attr('data-key');
+        let self = $(this).parents('.card');
+        $.ajax({
+            method: "POST",
+            url: "/remove",
+            data: {
+                'id': key
+            }
+        })
+        .done(function( data ) {
+            // 成功刪除, 刪除自己
+            self.remove();
+        })
+        .fail(function( data ){
+            // 失敗, 跳訊息
+            alert("Failed!");
+        }
+        );
     }
 
     function _clear() {
-        todos.set({});
-        console.log("Clear sucessful!");
+        $.ajax({
+            method: "PUT",
+            url: "/remove"
+        })
+        .done(function( data ) {
+            // 成功
+            let list = $('#todolist');
+            list.html('');
+            console.log("Clear sucessful!");
+        })
+        .fail(function( data ){
+            // 失敗跳訊息
+            alert("Failed!");
+        }
+        );
     }
 
     function init() {
         console.log("Initialzating!");
-        firebase.initializeApp(config);
-        todos = firebase.database().ref('todos');
         _bindEvent();
-        _renderTodo();
         console.log("Initialzation sucessful!");
     }
 
